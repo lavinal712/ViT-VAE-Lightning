@@ -488,7 +488,7 @@ def init_wandb(save_dir, opt, config, group_name, name_str):
     else:
         wandb.init(
             project=opt.projectname,
-            config=config,
+            config=None,
             settings=wandb.Settings(code_dir="./sgm"),
             group=group_name,
             name=name_str,

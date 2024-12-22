@@ -78,9 +78,9 @@ class AbstractAutoencoder(pl.LightningModule):
         if len(unexpected) > 0:
             print(f"Unexpected Keys: {unexpected}")
 
-        @abstractmethod
-        def get_input(self, batch) -> Any:
-            raise NotImplementedError()
+    @abstractmethod
+    def get_input(self, batch) -> Any:
+        raise NotImplementedError()
 
     def on_train_batch_end(self, *args, **kwargs):
         # for EMA computation
