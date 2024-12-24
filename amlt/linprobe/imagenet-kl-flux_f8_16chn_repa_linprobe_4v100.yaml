@@ -52,6 +52,7 @@ jobs:
     - pip install -r requirements.txt
     - pip install open-clip-torch==2.24.0
     - pip install tensorboard
+    - pip install numpy==1.26.4
     - pip install -e git+https://github.com/Stability-AI/datapipelines.git@main#egg=sdata
     - pip install -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
     - pip install -e .

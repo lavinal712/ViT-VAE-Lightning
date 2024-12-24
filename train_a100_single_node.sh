@@ -15,10 +15,10 @@ GPU_PER_NODE_COUNT=`nvidia-smi -L | wc -l`
 [[ -z "$MASTER_ADDR" ]] && MASTER_ADDR=192.168.1.30
 
 config=$1
-resumedir=$2
+logdir=$2
 torchrun --nproc_per_node=${GPU_PER_NODE_COUNT} \
     --node_rank=${NODE_RANK} \
     --nnodes=1 \
     --master_addr=${MASTER_ADDR} \
     --master_port=${MASTER_PORT} \
-    main.py -b ${config} -t -r ${resumedir} --wandb
+    main.py -b ${config} -t -l ${logdir} --wandb

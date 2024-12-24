@@ -16,9 +16,10 @@ GPU_PER_NODE_COUNT=`nvidia-smi -L | wc -l`
 
 config=$1
 logdir=$2
+resumedir=$3
 torchrun --nproc_per_node=${GPU_PER_NODE_COUNT} \
     --node_rank=${NODE_RANK} \
     --nnodes=${NODE_COUNT} \
     --master_addr=${MASTER_ADDR} \
     --master_port=${MASTER_PORT} \
-    main.py -b ${config} -t -l ${logdir} --wandb
+    main.py -b ${config} -t -l ${logdir} --wandb -r ${resumedir}

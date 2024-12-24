@@ -60,7 +60,7 @@ jobs:
 
     # Here start the code
     - echo "Start running the code"
-    - bash train_a100_single_node.sh configs/autoencoder/singularity/imagenet-kl-flux_f8_16chn_repa_align_100000_1node_4gpu.yaml /guangtingsc_v-yuqianhong/ViT-VAE/logs/repa-vae_1node_flux_imagenet/logs
+    - bash train_a100_single_node.sh configs/autoencoder/singularity/imagenet-kl-flux_f8_16chn_repa_align_100000_1node_4gpu.yaml /guangtingsc_v-yuqianhong/ViT-VAE/logs/repa-vae_1node_flux_imagenet/logs /guangtingsc_v-yuqianhong/ViT-VAE/logs/repa-vae_1node_flux_imagenet/logs
 
     # Finish the code
     - echo "End of the code"

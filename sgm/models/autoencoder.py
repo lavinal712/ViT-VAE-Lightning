@@ -649,6 +649,9 @@ class AutoencodingEngineWithAlignment(AutoencodingEngine):
         self.vision_encoder: torch.nn.Module = instantiate_from_config(vision_encoder_config)
         self.projector: torch.nn.Module = instantiate_from_config(projector_config)
         self.align_loss: torch.nn.Module = instantiate_from_config(align_loss_config)
+        
+        ckpt_path = kwargs.get("ckpt", None)
+        self.apply_ckpt(ckpt_path)
     
     @torch.no_grad()
     def encode_vision(self, x: torch.Tensor):
