@@ -634,3 +634,160 @@ class AutoencoderKLModeOnly(AutoencodingEngineLegacy):
             },
             **kwargs,
         )
+
+
+class AutoencodingEngineWithAlignment(AutoencodingEngine):
+    def __init__(
+        self,
+        *args,
+        vision_encoder_config: Dict,
+        projector_config: Dict,
+        align_loss_config: Dict,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.vision_encoder: torch.nn.Module = instantiate_from_config(vision_encoder_config)
+        self.projector: torch.nn.Module = instantiate_from_config(projector_config)
+        self.align_loss: torch.nn.Module = instantiate_from_config(align_loss_config)
+    
+    @torch.no_grad()
+    def encode_vision(self, x: torch.Tensor):
+        z = self.vision_encoder(x)
+        return z
+    
+    def project_vision(self, z: torch.Tensor):
+        z_p = self.projector(z)
+        return z_p
+    
+    def inner_training_step(
+        self, batch: dict, batch_idx: int, optimizer_idx: int = 0
+    ) -> torch.Tensor:
+        x = self.get_input(batch)
+        additional_decode_kwargs = {
+            key: batch[key] for key in self.additional_decode_keys.intersection(batch)
+        }
+        z, xrec, regularization_log = self(x, **additional_decode_kwargs)
+        z_ = self.encode_vision(x)
+        z_p = self.project_vision(z)
+        if hasattr(self.loss, "forward_keys"):
+            extra_info = {
+                "z": z,
+                "optimizer_idx": optimizer_idx,
+                "global_step": self.global_step,
+                "last_layer": self.get_last_layer(),
+                "split": "train",
+                "regularization_log": regularization_log,
+                "autoencoder": self,
+            }
+            extra_info = {k: extra_info[k] for k in self.loss.forward_keys}
+        else:
+            extra_info = dict()
+
+        if optimizer_idx == 0:
+            # autoencode
+            out_loss = self.loss(x, xrec, **extra_info)
+            if isinstance(out_loss, tuple):
+                aeloss, log_dict_ae = out_loss
+            else:
+                # simple loss function
+                aeloss = out_loss
+                log_dict_ae = {"train/loss/rec": aeloss.detach()}
+            
+            # alignment
+            align_loss = self.align_loss(z_p, z_)
+            if isinstance(align_loss, tuple):
+                alignloss, log_dict_align = align_loss
+            else:
+                alignloss = align_loss
+                log_dict_align = {"train/loss/align": alignloss.detach()}
+            
+            aeloss = aeloss + alignloss
+            log_dict_ae.update(log_dict_align)
+
+            self.log_dict(
+                log_dict_ae,
+                prog_bar=False,
+                logger=True,
+                on_step=True,
+                on_epoch=True,
+                sync_dist=False,
+            )
+            self.log(
+                "loss",
+                aeloss.mean().detach(),
+                prog_bar=True,
+                logger=False,
+                on_epoch=False,
+                on_step=True,
+            )
+            return aeloss
+        elif optimizer_idx == 1:
+            # discriminator
+            discloss, log_dict_disc = self.loss(x, xrec, **extra_info)
+            # -> discriminator always needs to return a tuple
+            self.log_dict(
+                log_dict_disc, prog_bar=False, logger=True, on_step=True, on_epoch=True
+            )
+            return discloss
+        else:
+            raise NotImplementedError(f"Unknown optimizer {optimizer_idx}")
+    
+    def _validation_step(self, batch: dict, batch_idx: int, postfix: str = "") -> Dict:
+        x = self.get_input(batch)
+
+        z, xrec, regularization_log = self(x)
+        z_ = self.encode_vision(x)
+        z_p = self.project_vision(z)
+        if hasattr(self.loss, "forward_keys"):
+            extra_info = {
+                "z": z,
+                "optimizer_idx": 0,
+                "global_step": self.global_step,
+                "last_layer": self.get_last_layer(),
+                "split": "val" + postfix,
+                "regularization_log": regularization_log,
+                "autoencoder": self,
+            }
+            extra_info = {k: extra_info[k] for k in self.loss.forward_keys}
+        else:
+            extra_info = dict()
+        out_loss = self.loss(x, xrec, **extra_info)
+        if isinstance(out_loss, tuple):
+            aeloss, log_dict_ae = out_loss
+        else:
+            # simple loss function
+            aeloss = out_loss
+            log_dict_ae = {f"val{postfix}/loss/rec": aeloss.detach()}
+        align_loss = self.align_loss(z_p, z_)
+        if isinstance(align_loss, tuple):
+            alignloss, log_dict_align = align_loss
+        else:
+            alignloss = align_loss
+            log_dict_align = {"train/loss/align": alignloss.detach()}
+        aeloss = aeloss + alignloss
+        log_dict_ae.update(log_dict_align)
+        full_log_dict = log_dict_ae
+
+        if "optimizer_idx" in extra_info:
+            extra_info["optimizer_idx"] = 1
+            discloss, log_dict_disc = self.loss(x, xrec, **extra_info)
+            full_log_dict.update(log_dict_disc)
+        self.log(
+            f"val{postfix}/loss/rec",
+            log_dict_ae[f"val{postfix}/loss/rec"],
+            sync_dist=True,
+        )
+        self.log_dict(full_log_dict, sync_dist=True)
+        return full_log_dict
+    
+    def get_autoencoder_params(self) -> list:
+        params = []
+        if hasattr(self.loss, "get_trainable_autoencoder_parameters"):
+            params += list(self.loss.get_trainable_autoencoder_parameters())
+        if hasattr(self.regularization, "get_trainable_parameters"):
+            params += list(self.regularization.get_trainable_parameters())
+        params = params + list(self.encoder.parameters())
+        params = params + list(self.decoder.parameters())
+        params = params + list(self.projector.parameters())
+        return params
+        

@@ -1,6 +1,6 @@
 model:
   base_learning_rate: 4.5e-6
-  target: sgm.models.autoencoder.AutoencodingEngine
+  target: sgm.models.autoencoder.AutoencodingEngineWithAlignment
   params:
     input_key: image
     monitor: val/loss/rec
@@ -25,6 +25,26 @@ model:
     decoder_config:
       target: sgm.modules.diffusionmodules.model.Decoder
       params: ${model.params.encoder_config.params}
+    
+    vision_encoder_config:
+      target: sgm.modules.vision_encoders.modules.FrozenCLIPImageEmbedder
+      params:
+        layer: last
+    
+    projector_config:
+      target: sgm.modules.vision_encoders.VisionProjector
+      params:
+        image_size: 32
+        patch_length: 256
+        in_features: 16
+        hidden_features: 1024
+        out_features: 1024
+        select_features: 16
+    
+    align_loss_config:
+      target: sgm.modules.autoencoding.losses.align_loss.AlignLoss
+      params:
+        align_weight: 100000.0
 
     regularizer_config:
       target: sgm.modules.autoencoding.regularizers.DiagonalGaussianRegularizer
@@ -43,9 +63,9 @@ model:
 data:
   target: sgm.data.imagenet.ImageNetLoader
   params:
-    batch_size: 16
+    batch_size: 8
     num_workers: 1
-    shuffle: flase
+    shuffle: False
     data_root: /home/t2vg-a100-G4-12/workspace/msra/ImageNet/ILSVRC2012/ILSVRC2012/train
     image_size: 256
 

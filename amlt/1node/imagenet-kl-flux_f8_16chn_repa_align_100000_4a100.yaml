@@ -1,0 +1,66 @@
+description: repa-vae
+
+target:
+  service: sing
+  name: msrresrchbasicvc
+  workspace_name: t2vgws2
+
+environment:
+  # amlt cache base-image
+  # image: amlt-sing/acpt-2.2.1-py3.10-cuda12.1
+  image: deeptimhe/ubuntu22.04-cuda12.1-python3.10-pytorch2.2:orig-sing-0610-simpler
+  registry: docker.io
+  setup:
+  - python -m pip install --upgrade pip
+  - sudo apt-get update
+  
+storage:
+  guangtingsc_yuqianhong:
+    storage_account_name: guangtingsc
+    container_name: v-yuqianhong
+    mount_dir: /guangtingsc_v-yuqianhong
+
+code:
+  local_dir: $CONFIG_DIR/../../
+
+jobs:
+- name: imagenet-kl-flux_f8_16chn_repa_align_100000_4a100
+  sku: 40G4-A100
+  process_count_per_node: 1
+  mpi: true
+  execution_mode: Basic
+  priority: High # [High, Medium, Low]. On AMLK8s, the priority value is mapped to 200, 100, and 80, respectively.
+  sla_tier: basic # [premium, standard, basic]
+  identity: managed
+  submit_args:
+    container_args:
+      shm_size: 8192g
+    env:
+      SHARED_MEMORY_PERCENT: 1
+
+  command:
+    # Read the environment variables
+    - export $$(grep -v '^#' .env | xargs)
+    - nvidia-smi
+    - pip list
+
+    # Package installation
+    - python -m venv venv
+    - source venv/bin/activate
+    - python -m pip install --upgrade pip
+    - pip install -r requirements_pt2.txt
+    - pip install -r requirements.txt
+    - pip install open-clip-torch==2.24.0
+    - pip install -e git+https://github.com/Stability-AI/datapipelines.git@main#egg=sdata
+    - pip install -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
+    - pip install -e .
+    - pip list
+    - wandb login --relogin --host=https://microsoft-research.wandb.io local-0e906e7b4d4d5858a0340fd36bd7700ffd4dd5ec
+
+    # Here start the code
+    - echo "Start running the code"
+    - bash train_a100_single_node.sh configs/autoencoder/singularity/imagenet-kl-flux_f8_16chn_repa_align_100000_1node_4gpu.yaml /guangtingsc_v-yuqianhong/ViT-VAE/logs/vit-vae_1node_flux_imagenet/logs
+
+    # Finish the code
+    - echo "End of the code"
+    - sleep infinity
