@@ -64,7 +64,7 @@ class AbstractAutoencoder(pl.LightningModule):
         if ckpt.endswith("ckpt"):
             sd = torch.load(ckpt, map_location="cpu")["state_dict"]
         elif ckpt.endswith("safetensors"):
-            sd = load_file(ckpt)
+            sd = load_file(ckpt, device="cpu")
         else:
             raise NotImplementedError
 
@@ -645,13 +645,11 @@ class AutoencodingEngineWithAlignment(AutoencodingEngine):
         align_loss_config: Dict,
         **kwargs,
     ):
+        kwargs["ckpt_path"] = None
         super().__init__(*args, **kwargs)
         self.vision_encoder: torch.nn.Module = instantiate_from_config(vision_encoder_config)
         self.projector: torch.nn.Module = instantiate_from_config(projector_config)
         self.align_loss: torch.nn.Module = instantiate_from_config(align_loss_config)
-        
-        ckpt_path = kwargs.get("ckpt", None)
-        self.apply_ckpt(ckpt_path)
     
     @torch.no_grad()
     def encode_vision(self, x: torch.Tensor):
