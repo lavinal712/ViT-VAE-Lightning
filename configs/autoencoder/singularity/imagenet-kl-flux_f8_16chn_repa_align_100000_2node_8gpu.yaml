@@ -5,7 +5,7 @@ model:
     input_key: image
     monitor: val/loss/rec
     disc_start_iter: 0
-    ckpt_path: /guangtingsc_v-yuqianhong/ViT-VAE/pretrained_models/flux_vae.safetensors
+    ckpt_path: /t2vgusw2_v-yuqianhong/ViT-VAE/pretrained_models/flux_vae.safetensors
 
     encoder_config:
       target: sgm.modules.diffusionmodules.model.Encoder
@@ -66,7 +66,7 @@ data:
     batch_size: 8
     num_workers: 24
     shuffle: False
-    data_root: /guangtingsc_v-yuqianhong/ImageNet/ILSVRC2012/train
+    data_root: /t2vgusw2_v-yuqianhong/ImageNet/ILSVRC2012/train
     image_size: 256
 
 
@@ -94,7 +94,7 @@ lightning:
         increase_log_steps: True
 
   trainer:
-    devices: 0, 1, 2, 3
+    devices: 0, 1, 2, 3, 4, 5, 6, 7
     limit_val_batches: 50
     benchmark: True
     accumulate_grad_batches: 1
