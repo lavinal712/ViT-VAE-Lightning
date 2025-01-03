@@ -2,7 +2,7 @@ description: repa-vae
 
 target:
   service: sing
-  name: msrresrchvc
+  name: msroctovc
   workspace_name: t2vgws2
 
 environment:
@@ -19,6 +19,11 @@ storage:
     storage_account_name: guangtingsc
     container_name: v-yuqianhong
     mount_dir: /guangtingsc_v-yuqianhong
+  
+  t2vgusw2_yuqianhong:
+    storage_account_name: t2vgusw2
+    container_name: v-yuqianhong
+    mount_dir: /t2vgusw2_v-yuqianhong
 
 code:
   local_dir: $CONFIG_DIR/../../
@@ -30,7 +35,7 @@ jobs:
   mpi: true
   execution_mode: Basic
   priority: High # [High, Medium, Low]. On AMLK8s, the priority value is mapped to 200, 100, and 80, respectively.
-  sla_tier: basic # [premium, standard, basic]
+  sla_tier: premium # [premium, standard, basic]
   identity: managed
   submit_args:
     container_args:
@@ -60,7 +65,7 @@ jobs:
 
     # Here start the code
     - echo "Start running the code"
-    - bash train_a100_single_node.sh configs/autoencoder/singularity/imagenet-kl-flux_f8_16chn_repa_align_100000_1node_4gpu.yaml /guangtingsc_v-yuqianhong/ViT-VAE/logs/repa-vae_1node_flux_imagenet/logs
+    - bash train_a100_single_node.sh configs/autoencoder/singularity/imagenet-kl-flux_f8_16chn_repa_align_100000_1node_4gpu_guangtingsc.yaml /guangtingsc_v-yuqianhong/ViT-VAE/logs/repa-vae_1node_flux_imagenet/logs
 
     # Finish the code
     - echo "End of the code"
